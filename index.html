@@ -3,16 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AIdea - Dubai's AI Property Intelligence Network</title>
-    <meta name="description" content="Your AI-Powered Real Estate Command Center. Dubai's most advanced property intelligence network combining data, insight, and 24/7 WhatsApp intelligence.">
+    <title>Your AI-Powered Global Real Estate Consultancy</title>
+    <meta name="description" content="Your AI-powered global consultancy arranging everything from A-Z. Finding your perfect home or investment across UAE, Bali, and beyond.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
                         'primary': '#87CEEB',
+                        'secondary': '#FFB6C1',
+                        'accent': '#98FB98',
+                        'warm-orange': '#FFA07A',
+                        'soft-purple': '#DDA0DD',
                         'navy': '#1e3a5f',
                         'dark-navy': '#0f1f35',
                         'light-blue': '#e0f2fe',
@@ -20,32 +29,21 @@
                     fontFamily: {
                         'inter': ['Inter', 'system-ui', 'sans-serif'],
                     },
-                    letterSpacing: {
-                        'tighter': '-0.05em',
-                    },
                     animation: {
                         'float': 'float 6s ease-in-out infinite',
                         'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                        'scan': 'scan 2s ease-in-out infinite',
-                        'data-flow': 'dataFlow 3s ease-in-out infinite',
+                        'gradient': 'gradient 8s ease infinite',
                         'slide-up': 'slideUp 0.5s ease-out',
                         'fade-in': 'fadeIn 0.8s ease-out',
-                        'rotate': 'rotate 20s linear infinite',
                     },
                     keyframes: {
                         float: {
                             '0%, 100%': { transform: 'translateY(0)' },
                             '50%': { transform: 'translateY(-20px)' },
                         },
-                        scan: {
-                            '0%': { transform: 'translateY(-100%)', opacity: '0' },
-                            '50%': { opacity: '1' },
-                            '100%': { transform: 'translateY(100%)', opacity: '0' },
-                        },
-                        dataFlow: {
-                            '0%': { transform: 'translateX(-100%)', opacity: '0' },
-                            '50%': { opacity: '1' },
-                            '100%': { transform: 'translateX(100%)', opacity: '0' },
+                        gradient: {
+                            '0%, 100%': { backgroundPosition: '0% 50%' },
+                            '50%': { backgroundPosition: '100% 50%' },
                         },
                         slideUp: {
                             '0%': { transform: 'translateY(20px)', opacity: '0' },
@@ -55,10 +53,6 @@
                             '0%': { opacity: '0' },
                             '100%': { opacity: '1' },
                         },
-                        rotate: {
-                            '0%': { transform: 'rotate(0deg)' },
-                            '100%': { transform: 'rotate(360deg)' },
-                        }
                     }
                 }
             }
@@ -67,12 +61,83 @@
     <style>
         * {
             font-family: 'Inter', system-ui, sans-serif;
-            letter-spacing: -0.05em;
         }
         
-        /* Custom scrollbar */
+        /* Gradient backgrounds */
+        .gradient-bg {
+            background: linear-gradient(-45deg, #87CEEB, #FFB6C1, #98FB98, #FFA07A);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #1e3a5f 0%, #87CEEB 50%, #FFB6C1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        /* Interactive map styles */
+        .country-marker {
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        
+        .country-marker:hover circle {
+            transform: scale(1.1);
+            transform-origin: center;
+        }
+        
+        .country-marker.active circle {
+            animation: pulse 2s infinite;
+        }
+        
+        .country-label {
+            pointer-events: none;
+            user-select: none;
+        }
+        
+        .map-tooltip {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            pointer-events: none;
+            z-index: 1000;
+            font-weight: 600;
+            transform: translate(-50%, -120%);
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .map-tooltip.visible {
+            opacity: 1;
+        }
+        
+        /* Dubai map styles */
+        .dubai-area {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            fill: #87CEEB;
+            stroke: #1e3a5f;
+            stroke-width: 2;
+        }
+        
+        .dubai-area:hover {
+            fill: #FFB6C1;
+            transform: scale(1.05);
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+        }
+        
+        .dubai-area.selected {
+            fill: #FFA07A;
+        }
+        
+        /* Smooth scrollbar */
         ::-webkit-scrollbar {
-            width: 8px;
+            width: 10px;
         }
         
         ::-webkit-scrollbar-track {
@@ -80,1149 +145,645 @@
         }
         
         ::-webkit-scrollbar-thumb {
-            background: #87CEEB;
-            border-radius: 4px;
+            background: linear-gradient(135deg, #87CEEB, #FFB6C1);
+            border-radius: 5px;
         }
         
-        /* Smooth scroll */
-        html {
-            scroll-behavior: smooth;
-        }
-        
-        /* Glass morphism effect */
+        /* Glass morphism */
         .glass {
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 0.9);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
         
-        .glass-dark {
-            background: rgba(30, 58, 95, 0.95);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
+        /* Project card hover effect */
+        .project-card {
+            transition: all 0.3s ease;
+            overflow: hidden;
         }
         
-        /* Gradient text */
-        .gradient-text {
-            background: linear-gradient(135deg, #1e3a5f 0%, #87CEEB 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+        .project-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
         }
         
-        .gradient-text-light {
-            background: linear-gradient(135deg, #87CEEB 0%, #ffffff 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+        .project-card img {
+            transition: transform 0.5s ease;
         }
         
-        /* Hover effects */
-        .hover-lift {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        .project-card:hover img {
+            transform: scale(1.1);
         }
         
-        .hover-lift:hover {
-            transform: translateY(-4px);
-        }
-        
-        /* Number counter animation */
-        @keyframes countUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .counter {
-            animation: countUp 1s ease-out forwards;
-        }
-        
-        /* Tech grid pattern */
-        .tech-grid {
-            background-image: 
-                linear-gradient(rgba(135, 206, 235, 0.1) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(135, 206, 235, 0.1) 1px, transparent 1px);
-            background-size: 50px 50px;
-        }
-        
-        /* Data visualization effect */
-        .data-point {
-            position: absolute;
-            width: 4px;
-            height: 4px;
-            background: #87CEEB;
-            border-radius: 50%;
-            opacity: 0;
-            animation: pulse 2s infinite;
-        }
-        
-        /* Glow effect */
-        .glow {
-            box-shadow: 0 0 20px rgba(135, 206, 235, 0.5);
-        }
-        
-        /* Parallax scrolling effect */
-        .parallax {
-            background-attachment: fixed;
-            background-position: center;
-            background-repeat: no-repeat;
-            background-size: cover;
-        }
-        
-        /* Chat message animation */
-        .chat-message {
-            animation: slideUp 0.5s ease-out;
-        }
-        
-        /* Feature card hover */
-        .feature-card {
+        /* Warm gradient button */
+        .warm-button {
+            background: linear-gradient(135deg, #FFB6C1, #FFA07A);
             transition: all 0.3s ease;
         }
         
-        .feature-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        .warm-button:hover {
+            background: linear-gradient(135deg, #FFA07A, #FFB6C1);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(255, 160, 122, 0.3);
         }
         
-        /* Timeline */
-        .timeline-item::before {
-            content: '';
+        /* Leaflet map styles */
+        .leaflet-container {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .custom-div-icon {
+            background: transparent;
+            border: none;
+        }
+        
+        .marker-pin {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
             position: absolute;
             left: 50%;
-            transform: translateX(-50%);
-            width: 2px;
-            height: 100%;
-            background: #e5e7eb;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
         }
         
-        /* Neural network animation */
-        .neural-network {
+        .marker-pin.active {
+            background: linear-gradient(135deg, #98FB98, #87CEEB);
+            animation: pulse-marker 2s infinite;
+        }
+        
+        .marker-pin.coming-soon {
+            background: linear-gradient(135deg, #FFB6C1, #FFA07A);
+            opacity: 0.8;
+        }
+        
+        .marker-pin:hover {
+            transform: translate(-50%, -50%) scale(1.2);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+        }
+        
+        .marker-pin span {
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Ripple effect for active markers */
+        .marker-pin.active::before {
+            content: '';
             position: absolute;
             width: 100%;
             height: 100%;
-            opacity: 0.1;
-        }
-        
-        .neural-node {
-            position: absolute;
-            width: 8px;
-            height: 8px;
-            background: #87CEEB;
             border-radius: 50%;
-            animation: pulse 3s infinite;
+            background: inherit;
+            opacity: 0.6;
+            animation: ripple 2s infinite;
         }
         
-        .neural-connection {
-            position: absolute;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, #87CEEB, transparent);
-            animation: dataFlow 4s infinite;
+        @keyframes pulse-marker {
+            0% {
+                box-shadow: 0 4px 15px rgba(135, 206, 235, 0.4);
+            }
+            50% {
+                box-shadow: 0 4px 30px rgba(135, 206, 235, 0.8);
+            }
+            100% {
+                box-shadow: 0 4px 15px rgba(135, 206, 235, 0.4);
+            }
+        }
+        
+        @keyframes ripple {
+            0% {
+                transform: scale(1);
+                opacity: 0.6;
+            }
+            100% {
+                transform: scale(1.8);
+                opacity: 0;
+            }
+        }
+        
+        /* Custom popup styles */
+        .leaflet-popup-content-wrapper {
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .leaflet-popup-content {
+            margin: 15px 20px;
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(135, 206, 235, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 15px rgba(135, 206, 235, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(135, 206, 235, 0);
+            }
         }
     </style>
 </head>
-<body class="bg-white text-gray-900 font-inter tracking-tighter overflow-x-hidden">
+<body class="bg-white text-gray-900 font-inter overflow-x-hidden">
     <!-- Navigation -->
     <nav class="fixed top-0 w-full z-50 glass">
         <div class="max-w-7xl mx-auto px-6 py-4">
             <div class="flex justify-between items-center">
-                <div class="flex items-baseline space-x-1">
-                    <span class="text-3xl font-bold text-navy">AI</span>
-                    <span class="text-3xl font-bold text-primary">dea</span>
-                </div>
+                <div class="text-3xl font-bold gradient-text">AIDEA</div>
                 <div class="hidden md:flex items-center space-x-8">
-                    <a href="#how-it-works" class="text-gray-600 hover:text-navy transition-colors">How It Works</a>
-                    <a href="#technology" class="text-gray-600 hover:text-navy transition-colors">Technology</a>
-                    <a href="#features" class="text-gray-600 hover:text-navy transition-colors">Features</a>
+                    <a href="#global-reach" class="text-gray-600 hover:text-navy transition-colors">Global Reach</a>
+                    <a href="#services" class="text-gray-600 hover:text-navy transition-colors">Services</a>
+                    <a href="#projects" class="text-gray-600 hover:text-navy transition-colors">Projects</a>
                     <a href="#testimonials" class="text-gray-600 hover:text-navy transition-colors">Success Stories</a>
                 </div>
-                <button class="bg-navy text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-dark-navy transition-colors whatsapp-btn">
-                    Start Chat
+                <button class="warm-button text-white px-6 py-2.5 rounded-full text-sm font-medium whatsapp-btn">
+                    Start Your Journey
                 </button>
             </div>
         </div>
     </nav>
 
     <!-- Hero Section -->
-    <section class="relative min-h-screen flex items-center pt-20">
-        <!-- Animated background -->
-        <div class="absolute inset-0 tech-grid opacity-10"></div>
+    <section class="relative min-h-screen flex items-center pt-20 overflow-hidden">
+        <!-- Animated gradient background -->
+        <div class="absolute inset-0 gradient-bg opacity-10"></div>
         
-        <!-- Neural network visualization -->
-        <div class="neural-network">
-            <div class="neural-node" style="top: 10%; left: 20%;"></div>
-            <div class="neural-node" style="top: 30%; left: 70%;"></div>
-            <div class="neural-node" style="top: 50%; left: 40%;"></div>
-            <div class="neural-node" style="top: 70%; left: 60%;"></div>
-            <div class="neural-node" style="top: 80%; left: 25%;"></div>
-            <div class="neural-connection" style="top: 20%; left: 20%; width: 300px; transform: rotate(25deg);"></div>
-            <div class="neural-connection" style="top: 40%; left: 40%; width: 250px; transform: rotate(-30deg);"></div>
-            <div class="neural-connection" style="top: 60%; left: 25%; width: 350px; transform: rotate(45deg);"></div>
-        </div>
+        <!-- Floating shapes -->
+        <div class="absolute top-20 left-10 w-64 h-64 bg-secondary rounded-full filter blur-3xl opacity-20 animate-float"></div>
+        <div class="absolute bottom-20 right-10 w-96 h-96 bg-accent rounded-full filter blur-3xl opacity-20 animate-float" style="animation-delay: 3s;"></div>
         
         <div class="relative z-10 max-w-7xl mx-auto px-6 py-20">
-            <div class="grid lg:grid-cols-2 gap-16 items-center">
-                <div class="animate-fade-in">
-                    <div class="inline-flex items-center space-x-2 bg-primary/10 px-4 py-2 rounded-full mb-8">
-                        <div class="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-                        <span class="text-sm font-medium text-navy">Dubai's AI Property Intelligence Network</span>
-                    </div>
-                    
-                    <h1 class="text-5xl lg:text-7xl font-bold leading-tight mb-6">
-                        <span class="text-navy">Your Personal</span><br/>
-                        <span class="gradient-text">AI-Enhanced Property Expert</span>
-                    </h1>
-                    
-                    <p class="text-xl text-gray-700 mb-4 leading-relaxed font-medium">
-                        Chat with Dubai's most knowledgeable property consultants — real experts enhanced with AI superpowers to find exactly what you need, instantly.
-                    </p>
-                    
-                    <p class="text-lg text-gray-600 mb-8">
-                        Our agents use <span class="font-semibold text-navy">AI Intelligence</span> to scan 10,000+ properties, analyze market trends, and provide insights no traditional agent can match — all while giving you personalized, human service.
-                    </p>
-                    
-                    <div class="flex flex-col sm:flex-row gap-4 mb-12">
-                        <button class="bg-navy text-white px-8 py-4 rounded-full font-medium hover:bg-dark-navy transition-all hover-lift flex items-center justify-center space-x-3 whatsapp-btn glow">
-                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-                            </svg>
-                            <span>Start on WhatsApp</span>
-                        </button>
-                        <button class="border border-gray-300 text-navy px-8 py-4 rounded-full font-medium hover:border-navy transition-all hover-lift">
-                            See It In Action
-                        </button>
-                    </div>
-                    
-                    <!-- Trust indicators -->
-                    <div class="flex items-center space-x-6 text-sm text-gray-600">
-                        <div class="flex items-center space-x-2">
-                            <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-                            </svg>
-                            <span>100% Secure</span>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                            </svg>
-                            <span>Instant Response</span>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <svg class="w-5 h-5 text-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path>
-                            </svg>
-                            <span>15+ Languages</span>
-                        </div>
-                    </div>
+            <div class="text-center mb-16 animate-fade-in">
+                <div class="inline-flex items-center space-x-2 bg-gradient-to-r from-secondary/20 to-warm-orange/20 px-6 py-3 rounded-full mb-8">
+                    <span class="text-sm font-medium text-navy">🌍 Your Global Real Estate Partner</span>
                 </div>
                 
-                <!-- Enhanced AI Intelligence Visualization -->
-                <div class="relative animate-slide-up">
-                    <!-- Main Dashboard -->
-                    <div class="bg-white rounded-3xl shadow-2xl p-8 border border-gray-100 relative overflow-hidden">
-                        <!-- Scanning effect overlay -->
-                        <div class="absolute inset-0 opacity-20">
-                            <div class="h-1 bg-gradient-to-r from-transparent via-primary to-transparent animate-scan"></div>
-                        </div>
-                        
-                        <div class="flex items-center justify-between mb-6">
-                            <h3 class="text-lg font-semibold text-navy">Your Agent's AI Dashboard</h3>
-                            <div class="flex items-center space-x-2">
-                                <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                                <span class="text-sm text-gray-500">Expert Online</span>
-                            </div>
-                        </div>
-                        
-                        <!-- Intelligence Metrics -->
-                        <div class="space-y-4">
-                            <div class="bg-gray-50 rounded-lg p-4">
-                                <div class="flex items-center justify-between mb-2">
-                                    <span class="text-sm text-gray-600">Properties Your Agent Can Access</span>
-                                    <span class="text-2xl font-bold text-navy counter">10,000+</span>
-                                </div>
-                                <div class="w-full bg-gray-200 rounded-full h-2">
-                                    <div class="bg-primary h-2 rounded-full animate-pulse-slow" style="width: 100%"></div>
-                                </div>
-                            </div>
-                            
-                            <div class="bg-gray-50 rounded-lg p-4">
-                                <div class="flex items-center justify-between mb-2">
-                                    <span class="text-sm text-gray-600">Market Data Points Analyzed</span>
-                                    <span class="text-2xl font-bold text-navy counter" style="animation-delay: 0.2s">2.5M+</span>
-                                </div>
-                                <div class="w-full bg-gray-200 rounded-full h-2">
-                                    <div class="bg-primary h-2 rounded-full animate-pulse-slow" style="width: 90%; animation-delay: 0.2s"></div>
-                                </div>
-                            </div>
-                            
-                            <div class="bg-gray-50 rounded-lg p-4">
-                                <div class="flex items-center justify-between mb-2">
-                                    <span class="text-sm text-gray-600">Agent Match Accuracy</span>
-                                    <span class="text-2xl font-bold text-navy counter" style="animation-delay: 0.4s">98.7%</span>
-                                </div>
-                                <div class="w-full bg-gray-200 rounded-full h-2">
-                                    <div class="bg-primary h-2 rounded-full animate-pulse-slow" style="width: 98.7%; animation-delay: 0.4s"></div>
-                                </div>
-                            </div>
-                            
-                            <div class="bg-gray-50 rounded-lg p-4">
-                                <div class="flex items-center justify-between mb-2">
-                                    <span class="text-sm text-gray-600">Response Speed</span>
-                                    <span class="text-2xl font-bold text-navy counter" style="animation-delay: 0.6s"><2 sec</span>
-                                </div>
-                                <div class="w-full bg-gray-200 rounded-full h-2">
-                                    <div class="bg-primary h-2 rounded-full animate-pulse-slow" style="width: 99.5%; animation-delay: 0.6s"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Floating Intelligence Cards -->
-                    <div class="absolute -top-4 -right-4 bg-white rounded-2xl shadow-lg p-4 animate-float">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                                <span class="text-lg">🧠</span>
-                            </div>
-                            <div>
-                                <p class="text-sm font-medium">AI-Enhanced Experts</p>
-                                <p class="text-xs text-gray-500">Real Agents, Superpowers</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="absolute -bottom-4 -left-4 bg-white rounded-2xl shadow-lg p-4 animate-float" style="animation-delay: 3s">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                                <span class="text-lg">📊</span>
-                            </div>
-                            <div>
-                                <p class="text-sm font-medium">Data Sources</p>
-                                <p class="text-xs text-gray-500">150+ Integrated</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- New floating card -->
-                    <div class="absolute top-1/2 -right-8 bg-white rounded-2xl shadow-lg p-4 animate-float" style="animation-delay: 1.5s">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                                <span class="text-lg">🌍</span>
-                            </div>
-                            <div>
-                                <p class="text-sm font-medium">Global Reach</p>
-                                <p class="text-xs text-gray-500">15+ Languages</p>
-                            </div>
-                        </div>
-                    </div>
+                <h1 class="text-4xl lg:text-6xl font-bold leading-tight mb-6">
+                    <span class="gradient-text">Your AI-Powered Global Consultancy</span>
+                </h1>
+                
+                <p class="text-xl text-gray-700 mb-4 leading-relaxed font-medium max-w-4xl mx-auto">
+                    Arranging everything from A to Z — whether you're finding your dream home or making your smartest investment. 
+                    We combine cutting-edge AI with human warmth to guide you through every step of your real estate journey.
+                </p>
+                
+                <p class="text-lg text-gray-600 mb-10 max-w-3xl mx-auto">
+                    From property search to legal documentation, visa assistance to investment analysis — 
+                    <span class="font-semibold text-navy">we're your complete real estate solution</span> across the globe.
+                </p>
+                
+                <div class="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+                    <button class="warm-button text-white px-8 py-4 rounded-full font-medium flex items-center justify-center space-x-3 whatsapp-btn">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                        </svg>
+                        <span>Let's Find Your Perfect Property</span>
+                    </button>
+                    <button class="border-2 border-navy text-navy px-8 py-4 rounded-full font-medium hover:bg-navy hover:text-white transition-all" onclick="document.getElementById('global-reach').scrollIntoView({behavior: 'smooth'})">
+                        Explore Our Global Reach
+                    </button>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- How It Works Section -->
-    <section id="how-it-works" class="py-24 bg-gray-50">
+    <!-- Global Reach Section with Interactive Map -->
+    <section id="global-reach" class="py-24 bg-gradient-to-b from-white to-light-blue/30">
         <div class="max-w-7xl mx-auto px-6">
             <div class="text-center mb-16">
-                <h2 class="text-5xl font-bold text-navy mb-4">Meet Your AI-Enhanced Experts</h2>
+                <h2 class="text-5xl font-bold text-navy mb-4">Your Gateway to Global Real Estate</h2>
                 <p class="text-xl text-gray-600 max-w-3xl mx-auto">
-                    Real property consultants with AI superpowers. From your first message to your dream property, our experts use advanced intelligence to serve you better.
+                    Click on any country to explore our services. We're currently active in UAE and Bali, 
+                    with exciting expansions coming soon!
                 </p>
             </div>
             
-            <!-- Process Steps -->
-            <div class="grid md:grid-cols-4 gap-8 mb-16">
-                <div class="text-center">
-                    <div class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 hover-lift">
-                        <span class="text-3xl">💬</span>
+            <!-- Interactive World Map -->
+            <div class="relative max-w-6xl mx-auto mb-16">
+                <div class="bg-white rounded-3xl shadow-2xl p-8 overflow-hidden">
+                    <!-- Leaflet Map with MapTiler -->
+                    <div id="worldMap" class="w-full h-[600px] rounded-2xl overflow-hidden"></div>
+                    
+                    <!-- Map Legend -->
+                    <div class="flex flex-wrap items-center justify-center gap-6 mt-6">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-4 h-4 rounded-full bg-gradient-to-r from-accent to-primary"></div>
+                            <span class="text-sm text-gray-600">Active Markets</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="w-4 h-4 rounded-full bg-gradient-to-r from-secondary to-warm-orange opacity-70"></div>
+                            <span class="text-sm text-gray-600">Coming Soon</span>
+                        </div>
                     </div>
-                    <h3 class="text-xl font-semibold text-navy mb-2">1. Chat with an Expert</h3>
-                    <p class="text-gray-600">Connect instantly with a property consultant who speaks your language</p>
                 </div>
                 
-                <div class="text-center">
-                    <div class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 hover-lift">
-                        <span class="text-3xl">🤖</span>
+                <!-- Coming Soon Modal -->
+                <div id="comingSoonModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                    <div class="bg-white rounded-3xl p-8 max-w-md mx-4 transform scale-95 opacity-0 transition-all duration-300" id="modalContent">
+                        <h3 class="text-2xl font-bold text-navy mb-4">Coming Soon to <span id="modalCountry"></span>!</h3>
+                        <p class="text-gray-600 mb-6">We're excited to expand our services to <span id="modalCountryName"></span>. Join our waitlist to be the first to know when we launch.</p>
+                        <form class="space-y-4">
+                            <input type="email" placeholder="Your email address" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-primary">
+                            <button type="submit" class="w-full warm-button text-white py-3 rounded-xl font-medium">
+                                Join Waitlist
+                            </button>
+                        </form>
+                        <button onclick="closeComingSoonModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
                     </div>
-                    <h3 class="text-xl font-semibold text-navy mb-2">2. AI Analyzes Everything</h3>
-                    <p class="text-gray-600">Your consultant uses AI to understand your exact needs instantly</p>
-                </div>
-                
-                <div class="text-center">
-                    <div class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 hover-lift">
-                        <span class="text-3xl">🔍</span>
-                    </div>
-                    <h3 class="text-xl font-semibold text-navy mb-2">3. Expert Searches</h3>
-                    <p class="text-gray-600">Your consultant searches 10,000+ properties with AI precision</p>
-                </div>
-                
-                <div class="text-center">
-                    <div class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 hover-lift">
-                        <span class="text-3xl">🏠</span>
-                    </div>
-                    <h3 class="text-xl font-semibold text-navy mb-2">4. Perfect Matches</h3>
-                    <p class="text-gray-600">Receive expertly curated properties with AI-powered insights</p>
                 </div>
             </div>
             
-            <!-- Chat Demo -->
-            <div class="bg-white rounded-3xl shadow-xl p-8 max-w-4xl mx-auto">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-xl font-semibold text-navy">Live Chat Demo</h3>
-                    <div class="flex items-center space-x-2">
-                        <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        <span class="text-sm text-gray-500">AI Active</span>
-                    </div>
-                </div>
-                
-                <!-- Chat Messages -->
-                <div class="space-y-4">
-                    <div class="flex justify-start">
-                        <div class="bg-gray-100 rounded-2xl p-4 max-w-sm chat-message">
-                            <p class="text-gray-800">Hi! I'm looking for a 2-bedroom apartment in Dubai Marina</p>
-                        </div>
-                    </div>
-                    
-                    <div class="flex justify-end">
-                        <div class="bg-primary text-white rounded-2xl p-4 max-w-sm chat-message" style="animation-delay: 0.5s">
-                            <p>Hello! I'm Sarah, your property consultant. I have access to AI tools that help me find exactly what you're looking for. What's your budget range?</p>
-                        </div>
-                    </div>
-                    
-                    <div class="flex justify-start">
-                        <div class="bg-gray-100 rounded-2xl p-4 max-w-sm chat-message" style="animation-delay: 1s">
-                            <p class="text-gray-800">My budget is around 2-2.5 million AED</p>
-                        </div>
-                    </div>
-                    
-                    <div class="flex justify-end">
-                        <div class="bg-primary text-white rounded-2xl p-4 max-w-lg chat-message" style="animation-delay: 1.5s">
-                            <p class="mb-2">Perfect! Using my AI tools, I've analyzed 12 excellent options that match your criteria. Here are my top 3 recommendations:</p>
-                            <div class="bg-white/20 rounded-lg p-3 text-sm">
-                                <p class="font-semibold mb-1">🏢 Marina Gate Tower 2</p>
-                                <p>2BR | 1,450 sq.ft | AED 2.3M | Sea View</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <!-- Country Cards Grid -->
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mt-16" id="countryCards">
+                <!-- Cards will be dynamically generated -->
             </div>
         </div>
     </section>
 
-    <!-- Technology Section -->
-    <section id="technology" class="py-24 bg-navy text-white relative overflow-hidden">
-        <!-- Animated background elements -->
-        <div class="absolute inset-0 opacity-10">
-            <div class="absolute top-20 left-10 w-64 h-64 bg-primary rounded-full filter blur-3xl animate-pulse"></div>
-            <div class="absolute bottom-20 right-10 w-96 h-96 bg-white rounded-full filter blur-3xl animate-pulse" style="animation-delay: 2s"></div>
-        </div>
-        
-        <div class="relative z-10 max-w-7xl mx-auto px-6">
-            <div class="text-center mb-16">
-                <h2 class="text-5xl font-bold mb-4">Your Experts' AI Advantage</h2>
-                <p class="text-xl text-white/80 max-w-3xl mx-auto">
-                    Our property consultants don't just use traditional methods — they're equipped with cutting-edge AI technology that gives them superhuman capabilities to serve you better.
-                </p>
-            </div>
-            
-            <!-- Tech Stack Grid -->
-            <div class="grid md:grid-cols-3 gap-8 mb-16">
-                <div class="glass-dark rounded-2xl p-8 hover-lift">
-                    <div class="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mb-6">
-                        <span class="text-2xl">🧠</span>
-                    </div>
-                    <h3 class="text-2xl font-semibold mb-4">Instant Understanding</h3>
-                    <p class="text-white/70">Your consultant uses AI to understand context, preferences, and nuances in any language — instantly</p>
-                </div>
-                
-                <div class="glass-dark rounded-2xl p-8 hover-lift">
-                    <div class="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mb-6">
-                        <span class="text-2xl">📊</span>
-                    </div>
-                    <h3 class="text-2xl font-semibold mb-4">Market Intelligence</h3>
-                    <p class="text-white/70">Your expert has real-time access to market data across 150+ sources</p>
-                </div>
-                
-                <div class="glass-dark rounded-2xl p-8 hover-lift">
-                    <div class="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mb-6">
-                        <span class="text-2xl">🔐</span>
-                    </div>
-                    <h3 class="text-2xl font-semibold mb-4">Protected Conversations</h3>
-                    <p class="text-white/70">Bank-level encryption ensures your discussions with our consultants remain completely private</p>
-                </div>
-            </div>
-            
-            <!-- AI Capabilities -->
-            <div class="bg-white/10 rounded-3xl p-8 lg:p-12">
-                <h3 class="text-3xl font-semibold mb-8 text-center">What Makes Our Consultants Different</h3>
-                
-                <div class="grid md:grid-cols-2 gap-8">
-                    <div class="space-y-6">
-                        <div class="flex items-start space-x-4">
-                            <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                                <svg class="w-5 h-5 text-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                            </div>
-                            <div>
-                                <h4 class="text-xl font-semibold mb-2">Predictive Market Analysis</h4>
-                                <p class="text-white/70">Your consultant predicts property values and rental yields with 98.7% accuracy using AI</p>
-                            </div>
-                        </div>
-                        
-                        <div class="flex items-start space-x-4">
-                            <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                                <svg class="w-5 h-5 text-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                            </div>
-                            <div>
-                                <h4 class="text-xl font-semibold mb-2">Emotion-Aware Service</h4>
-                                <p class="text-white/70">Our experts use AI to understand your concerns and adapt their approach to your needs</p>
-                            </div>
-                        </div>
-                        
-                        <div class="flex items-start space-x-4">
-                            <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                                <svg class="w-5 h-5 text-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                            </div>
-                            <div>
-                                <h4 class="text-xl font-semibold mb-2">Multilingual Excellence</h4>
-                                <p class="text-white/70">Your consultant communicates fluently in your language, even understanding voice notes</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="space-y-6">
-                        <div class="flex items-start space-x-4">
-                            <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                                <svg class="w-5 h-5 text-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                            </div>
-                            <div>
-                                <h4 class="text-xl font-semibold mb-2">Learning From Success</h4>
-                                <p class="text-white/70">Your expert's AI learns from thousands of successful matches to give you better recommendations</p>
-                            </div>
-                        </div>
-                        
-                        <div class="flex items-start space-x-4">
-                            <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                                <svg class="w-5 h-5 text-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                            </div>
-                            <div>
-                                <h4 class="text-xl font-semibold mb-2">Negotiation Intelligence</h4>
-                                <p class="text-white/70">Your consultant uses market data to help you negotiate the best possible deal</p>
-                            </div>
-                        </div>
-                        
-                        <div class="flex items-start space-x-4">
-                            <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                                <svg class="w-5 h-5 text-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                            </div>
-                            <div>
-                                <h4 class="text-xl font-semibold mb-2">Instant Document Insights</h4>
-                                <p class="text-white/70">Your expert can analyze contracts and documents instantly, highlighting key points</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Features Section -->
-    <section id="features" class="py-24 bg-white">
+    <!-- UAE Details Section with Dubai Map -->
+    <section id="uae-section" class="py-24 bg-white" style="display: none;">
         <div class="max-w-7xl mx-auto px-6">
             <div class="text-center mb-16">
-                <h2 class="text-5xl font-bold text-navy mb-4">Your Expert's Superpowers</h2>
+                <h2 class="text-5xl font-bold gradient-text mb-4">Discover Dubai's Prime Areas</h2>
                 <p class="text-xl text-gray-600 max-w-3xl mx-auto">
-                    Every feature is designed to help our consultants serve you better, faster, and more accurately than traditional agents ever could.
+                    Click on any area to explore properties, investment opportunities, and neighborhood insights
                 </p>
             </div>
             
-            <!-- Feature Cards Grid -->
+            <div class="grid lg:grid-cols-2 gap-12 items-start">
+                <!-- Dubai Map -->
+                <div class="bg-gradient-to-br from-light-blue/20 to-secondary/10 rounded-3xl p-8">
+                    <h3 class="text-2xl font-semibold text-navy mb-6">Interactive Dubai Map</h3>
+                    <svg viewBox="0 0 800 600" class="w-full h-auto">
+                        <!-- Dubai Marina -->
+                        <g class="dubai-area" data-area="Dubai Marina">
+                            <rect x="100" y="400" width="120" height="80" rx="10" />
+                            <text x="160" y="445" text-anchor="middle" class="fill-navy font-semibold text-sm">Dubai Marina</text>
+                        </g>
+                        
+                        <!-- Downtown Dubai -->
+                        <g class="dubai-area" data-area="Downtown Dubai">
+                            <rect x="350" y="300" width="140" height="80" rx="10" />
+                            <text x="420" y="345" text-anchor="middle" class="fill-navy font-semibold text-sm">Downtown Dubai</text>
+                        </g>
+                        
+                        <!-- Business Bay -->
+                        <g class="dubai-area" data-area="Business Bay">
+                            <rect x="500" y="320" width="120" height="80" rx="10" />
+                            <text x="560" y="365" text-anchor="middle" class="fill-navy font-semibold text-sm">Business Bay</text>
+                        </g>
+                        
+                        <!-- JBR -->
+                        <g class="dubai-area" data-area="JBR">
+                            <rect x="50" y="480" width="100" height="60" rx="10" />
+                            <text x="100" y="515" text-anchor="middle" class="fill-navy font-semibold text-sm">JBR</text>
+                        </g>
+                        
+                        <!-- Palm Jumeirah -->
+                        <g class="dubai-area" data-area="Palm Jumeirah">
+                            <circle cx="150" cy="350" r="60" />
+                            <text x="150" y="355" text-anchor="middle" class="fill-navy font-semibold text-sm">Palm Jumeirah</text>
+                        </g>
+                        
+                        <!-- DIFC -->
+                        <g class="dubai-area" data-area="DIFC">
+                            <rect x="450" y="250" width="80" height="60" rx="10" />
+                            <text x="490" y="285" text-anchor="middle" class="fill-navy font-semibold text-sm">DIFC</text>
+                        </g>
+                        
+                        <!-- Jumeirah -->
+                        <g class="dubai-area" data-area="Jumeirah">
+                            <rect x="250" y="450" width="120" height="70" rx="10" />
+                            <text x="310" y="490" text-anchor="middle" class="fill-navy font-semibold text-sm">Jumeirah</text>
+                        </g>
+                        
+                        <!-- Dubai Hills -->
+                        <g class="dubai-area" data-area="Dubai Hills">
+                            <rect x="550" y="200" width="120" height="80" rx="10" />
+                            <text x="610" y="245" text-anchor="middle" class="fill-navy font-semibold text-sm">Dubai Hills</text>
+                        </g>
+                        
+                        <!-- Arabian Ranches -->
+                        <g class="dubai-area" data-area="Arabian Ranches">
+                            <rect x="600" y="450" width="140" height="70" rx="10" />
+                            <text x="670" y="490" text-anchor="middle" class="fill-navy font-semibold text-sm">Arabian Ranches</text>
+                        </g>
+                        
+                        <!-- Dubai Creek Harbour -->
+                        <g class="dubai-area" data-area="Creek Harbour">
+                            <rect x="650" y="100" width="130" height="80" rx="10" />
+                            <text x="715" y="145" text-anchor="middle" class="fill-navy font-semibold text-sm">Creek Harbour</text>
+                        </g>
+                    </svg>
+                </div>
+                
+                <!-- Area Details -->
+                <div id="areaDetails" class="bg-gradient-to-br from-white to-light-blue/10 rounded-3xl p-8 shadow-xl">
+                    <h3 class="text-2xl font-semibold text-navy mb-6">Select an Area to Explore</h3>
+                    <p class="text-gray-600 mb-8">Click on any area in the map to see detailed information about properties, lifestyle, and investment opportunities.</p>
+                    
+                    <!-- Default content -->
+                    <div class="space-y-6">
+                        <div class="bg-white rounded-xl p-6 shadow-sm">
+                            <h4 class="text-lg font-semibold text-navy mb-3">Why Dubai?</h4>
+                            <ul class="space-y-2 text-gray-600">
+                                <li class="flex items-start space-x-2">
+                                    <span class="text-accent">✓</span>
+                                    <span>Tax-free rental income and capital gains</span>
+                                </li>
+                                <li class="flex items-start space-x-2">
+                                    <span class="text-accent">✓</span>
+                                    <span>100% foreign ownership in freehold areas</span>
+                                </li>
+                                <li class="flex items-start space-x-2">
+                                    <span class="text-accent">✓</span>
+                                    <span>Golden Visa eligibility with property investment</span>
+                                </li>
+                                <li class="flex items-start space-x-2">
+                                    <span class="text-accent">✓</span>
+                                    <span>World-class infrastructure and amenities</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Featured Projects Section -->
+    <section id="projects" class="py-24 bg-gradient-to-b from-light-blue/30 to-white">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center mb-16">
+                <h2 class="text-5xl font-bold text-navy mb-4">Featured Properties & Projects</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                    Handpicked opportunities across our active markets, from luxury homes to smart investments
+                </p>
+            </div>
+            
+            <!-- Project Grid -->
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Project 1 -->
+                <div class="project-card bg-white rounded-2xl shadow-lg overflow-hidden">
+                    <div class="h-64 bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-xl font-semibold">
+                        Marina Vista Tower
+                    </div>
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-sm font-medium text-warm-orange">Dubai Marina</span>
+                            <span class="text-sm text-gray-500">From AED 2.1M</span>
+                        </div>
+                        <h3 class="text-xl font-semibold text-navy mb-2">Luxury Waterfront Living</h3>
+                        <p class="text-gray-600 mb-4">Premium 2-3 bedroom apartments with stunning marina views</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-accent font-medium">7.2% ROI</span>
+                            <button class="text-navy font-medium hover:text-primary transition-colors">Learn More →</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Project 2 -->
+                <div class="project-card bg-white rounded-2xl shadow-lg overflow-hidden">
+                    <div class="h-64 bg-gradient-to-br from-warm-orange to-secondary flex items-center justify-center text-white text-xl font-semibold">
+                        Seminyak Beach Villas
+                    </div>
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-sm font-medium text-warm-orange">Bali, Indonesia</span>
+                            <span class="text-sm text-gray-500">From $450K</span>
+                        </div>
+                        <h3 class="text-xl font-semibold text-navy mb-2">Tropical Paradise Villas</h3>
+                        <p class="text-gray-600 mb-4">Private pool villas in prime beachfront location</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-accent font-medium">12% Rental Yield</span>
+                            <button class="text-navy font-medium hover:text-primary transition-colors">Learn More →</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Project 3 -->
+                <div class="project-card bg-white rounded-2xl shadow-lg overflow-hidden">
+                    <div class="h-64 bg-gradient-to-br from-accent to-primary flex items-center justify-center text-white text-xl font-semibold">
+                        Downtown Residences
+                    </div>
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-sm font-medium text-warm-orange">Downtown Dubai</span>
+                            <span class="text-sm text-gray-500">From AED 3.5M</span>
+                        </div>
+                        <h3 class="text-xl font-semibold text-navy mb-2">Iconic City Living</h3>
+                        <p class="text-gray-600 mb-4">Exclusive apartments with Burj Khalifa views</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-accent font-medium">6.8% ROI</span>
+                            <button class="text-navy font-medium hover:text-primary transition-colors">Learn More →</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-12">
+                <button class="warm-button text-white px-8 py-4 rounded-full font-medium">
+                    View All Properties
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Services Section -->
+    <section id="services" class="py-24 bg-white">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center mb-16">
+                <h2 class="text-5xl font-bold gradient-text mb-4">Everything from A to Z</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                    We don't just find properties — we handle every detail of your real estate journey with care and expertise
+                </p>
+            </div>
+            
+            <!-- Services Grid -->
             <div class="grid md:grid-cols-3 gap-8">
-                <!-- Feature 1 -->
-                <div class="bg-gray-50 rounded-2xl p-8 feature-card">
-                    <div class="w-14 h-14 bg-primary rounded-xl flex items-center justify-center mb-6">
-                        <span class="text-2xl">🌍</span>
+                <div class="bg-gradient-to-br from-primary/10 to-secondary/10 rounded-2xl p-8 hover:shadow-xl transition-all">
+                    <div class="w-16 h-16 bg-white rounded-xl flex items-center justify-center mb-6 shadow-lg">
+                        <span class="text-2xl">🏠</span>
                     </div>
-                    <h3 class="text-2xl font-semibold text-navy mb-4">Native Language Support</h3>
-                    <p class="text-gray-600 mb-6">Your consultant speaks your language perfectly — in Arabic, Hindi, Russian, Chinese, and 11 more</p>
-                    <ul class="space-y-2 text-sm text-gray-600">
-                        <li class="flex items-center space-x-2">
-                            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            <span>Native-level understanding</span>
-                        </li>
-                        <li class="flex items-center space-x-2">
-                            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            <span>Expert cultural understanding</span>
-                        </li>
-                        <li class="flex items-center space-x-2">
-                            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            <span>Voice note support</span>
-                        </li>
+                    <h3 class="text-2xl font-semibold text-navy mb-4">Property Search & Analysis</h3>
+                    <ul class="space-y-2 text-gray-600">
+                        <li>• AI-powered property matching</li>
+                        <li>• Investment ROI analysis</li>
+                        <li>• Market trend insights</li>
+                        <li>• Virtual property tours</li>
                     </ul>
                 </div>
                 
-                <!-- Feature 2 -->
-                <div class="bg-gray-50 rounded-2xl p-8 feature-card">
-                    <div class="w-14 h-14 bg-primary rounded-xl flex items-center justify-center mb-6">
-                        <span class="text-2xl">📍</span>
+                <div class="bg-gradient-to-br from-warm-orange/10 to-accent/10 rounded-2xl p-8 hover:shadow-xl transition-all">
+                    <div class="w-16 h-16 bg-white rounded-xl flex items-center justify-center mb-6 shadow-lg">
+                        <span class="text-2xl">📋</span>
                     </div>
-                    <h3 class="text-2xl font-semibold text-navy mb-4">Neighborhood Expert</h3>
-                    <p class="text-gray-600 mb-6">Your consultant has instant access to deep insights about every Dubai neighborhood</p>
-                    <ul class="space-y-2 text-sm text-gray-600">
-                        <li class="flex items-center space-x-2">
-                            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            <span>School & amenity data</span>
-                        </li>
-                        <li class="flex items-center space-x-2">
-                            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            <span>Transport connectivity</span>
-                        </li>
-                        <li class="flex items-center space-x-2">
-                            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            <span>Future development plans</span>
-                        </li>
+                    <h3 class="text-2xl font-semibold text-navy mb-4">Legal & Documentation</h3>
+                    <ul class="space-y-2 text-gray-600">
+                        <li>• Purchase agreement assistance</li>
+                        <li>• Title deed processing</li>
+                        <li>• Legal consultation</li>
+                        <li>• Translation services</li>
                     </ul>
                 </div>
                 
-                <!-- Feature 3 -->
-                <div class="bg-gray-50 rounded-2xl p-8 feature-card">
-                    <div class="w-14 h-14 bg-primary rounded-xl flex items-center justify-center mb-6">
+                <div class="bg-gradient-to-br from-soft-purple/10 to-primary/10 rounded-2xl p-8 hover:shadow-xl transition-all">
+                    <div class="w-16 h-16 bg-white rounded-xl flex items-center justify-center mb-6 shadow-lg">
+                        <span class="text-2xl">✈️</span>
+                    </div>
+                    <h3 class="text-2xl font-semibold text-navy mb-4">Visa & Residency</h3>
+                    <ul class="space-y-2 text-gray-600">
+                        <li>• Golden visa eligibility check</li>
+                        <li>• Visa application support</li>
+                        <li>• Residency planning</li>
+                        <li>• Family sponsorship guidance</li>
+                    </ul>
+                </div>
+                
+                <div class="bg-gradient-to-br from-secondary/10 to-warm-orange/10 rounded-2xl p-8 hover:shadow-xl transition-all">
+                    <div class="w-16 h-16 bg-white rounded-xl flex items-center justify-center mb-6 shadow-lg">
                         <span class="text-2xl">💰</span>
                     </div>
-                    <h3 class="text-2xl font-semibold text-navy mb-4">Investment Advisor</h3>
-                    <p class="text-gray-600 mb-6">Your consultant provides AI-calculated ROI projections and investment strategies</p>
-                    <ul class="space-y-2 text-sm text-gray-600">
-                        <li class="flex items-center space-x-2">
-                            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            <span>Rental yield predictions</span>
-                        </li>
-                        <li class="flex items-center space-x-2">
-                            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            <span>Capital appreciation forecast</span>
-                        </li>
-                        <li class="flex items-center space-x-2">
-                            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            <span>Market timing insights</span>
-                        </li>
+                    <h3 class="text-2xl font-semibold text-navy mb-4">Finance & Banking</h3>
+                    <ul class="space-y-2 text-gray-600">
+                        <li>• Mortgage arrangement</li>
+                        <li>• Bank account setup</li>
+                        <li>• Currency exchange</li>
+                        <li>• Payment plan structuring</li>
                     </ul>
                 </div>
                 
-                <!-- Feature 4 -->
-                <div class="bg-gray-50 rounded-2xl p-8 feature-card">
-                    <div class="w-14 h-14 bg-primary rounded-xl flex items-center justify-center mb-6">
-                        <span class="text-2xl">🏗️</span>
+                <div class="bg-gradient-to-br from-accent/10 to-soft-purple/10 rounded-2xl p-8 hover:shadow-xl transition-all">
+                    <div class="w-16 h-16 bg-white rounded-xl flex items-center justify-center mb-6 shadow-lg">
+                        <span class="text-2xl">🔑</span>
                     </div>
-                    <h3 class="text-2xl font-semibold text-navy mb-4">Off-Plan Specialist</h3>
-                    <p class="text-gray-600 mb-6">Your expert has exclusive access to pre-launch projects with AI-powered insights</p>
-                    <ul class="space-y-2 text-sm text-gray-600">
-                        <li class="flex items-center space-x-2">
-                            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            <span>Payment plan calculator</span>
-                        </li>
-                        <li class="flex items-center space-x-2">
-                            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            <span>Developer track record</span>
-                        </li>
-                        <li class="flex items-center space-x-2">
-                            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            <span>Construction progress updates</span>
-                        </li>
+                    <h3 class="text-2xl font-semibold text-navy mb-4">Property Management</h3>
+                    <ul class="space-y-2 text-gray-600">
+                        <li>• Rental management</li>
+                        <li>• Maintenance coordination</li>
+                        <li>• Tenant screening</li>
+                        <li>• Income optimization</li>
                     </ul>
                 </div>
                 
-                <!-- Feature 5 -->
-                <div class="bg-gray-50 rounded-2xl p-8 feature-card">
-                    <div class="w-14 h-14 bg-primary rounded-xl flex items-center justify-center mb-6">
-                        <span class="text-2xl">🏆</span>
+                <div class="bg-gradient-to-br from-primary/10 to-accent/10 rounded-2xl p-8 hover:shadow-xl transition-all">
+                    <div class="w-16 h-16 bg-white rounded-xl flex items-center justify-center mb-6 shadow-lg">
+                        <span class="text-2xl">🌟</span>
                     </div>
-                    <h3 class="text-2xl font-semibold text-navy mb-4">Visa Consultant</h3>
-                    <p class="text-gray-600 mb-6">Your expert instantly calculates your UAE visa eligibility based on property investment</p>
-                    <ul class="space-y-2 text-sm text-gray-600">
-                        <li class="flex items-center space-x-2">
-                            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            <span>Golden visa guidance</span>
-                        </li>
-                        <li class="flex items-center space-x-2">
-                            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            <span>Investment optimization</span>
-                        </li>
-                        <li class="flex items-center space-x-2">
-                            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            <span>Family sponsorship info</span>
-                        </li>
-                    </ul>
-                </div>
-                
-                <!-- Feature 6 -->
-                <div class="bg-gray-50 rounded-2xl p-8 feature-card">
-                    <div class="w-14 h-14 bg-primary rounded-xl flex items-center justify-center mb-6">
-                        <span class="text-2xl">📱</span>
-                    </div>
-                    <h3 class="text-2xl font-semibold text-navy mb-4">Always Available Expert</h3>
-                    <p class="text-gray-600 mb-6">Your dedicated consultant is ready to help 24/7, across all time zones</p>
-                    <ul class="space-y-2 text-sm text-gray-600">
-                        <li class="flex items-center space-x-2">
-                            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            <span>Instant responses</span>
-                        </li>
-                        <li class="flex items-center space-x-2">
-                            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            <span>Weekend & holiday support</span>
-                        </li>
-                        <li class="flex items-center space-x-2">
-                            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            <span>Global timezone aware</span>
-                        </li>
+                    <h3 class="text-2xl font-semibold text-navy mb-4">Lifestyle Services</h3>
+                    <ul class="space-y-2 text-gray-600">
+                        <li>• Area orientation tours</li>
+                        <li>• School recommendations</li>
+                        <li>• Healthcare guidance</li>
+                        <li>• Community integration</li>
                     </ul>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Statistics Section -->
-    <section class="py-24 bg-light-blue">
+    <!-- Testimonials Section -->
+    <section id="testimonials" class="py-24 bg-gradient-to-b from-white to-light-blue/30">
         <div class="max-w-7xl mx-auto px-6">
             <div class="text-center mb-16">
-                <h2 class="text-5xl font-bold text-navy mb-4">The Numbers Behind Our Experts</h2>
+                <h2 class="text-5xl font-bold text-navy mb-4">Happy Homeowners & Investors</h2>
                 <p class="text-xl text-gray-600 max-w-3xl mx-auto">
-                    Real results from real people working with our AI-enhanced property consultants
-                </p>
-            </div>
-            
-            <div class="grid md:grid-cols-4 gap-8">
-                <div class="text-center">
-                    <div class="text-6xl font-bold gradient-text mb-2 counter">2.5M+</div>
-                    <p class="text-lg text-gray-600">Data Points Analyzed</p>
-                </div>
-                
-                <div class="text-center">
-                    <div class="text-6xl font-bold gradient-text mb-2 counter" style="animation-delay: 0.2s">10K+</div>
-                    <p class="text-lg text-gray-600">Properties Available</p>
-                </div>
-                
-                <div class="text-center">
-                    <div class="text-6xl font-bold gradient-text mb-2 counter" style="animation-delay: 0.4s">98.7%</div>
-                    <p class="text-lg text-gray-600">Expert Accuracy</p>
-                </div>
-                
-                <div class="text-center">
-                    <div class="text-6xl font-bold gradient-text mb-2 counter" style="animation-delay: 0.6s">24/7</div>
-                    <p class="text-lg text-gray-600">Expert Availability</p>
-                </div>
-            </div>
-            
-            <!-- Additional Stats -->
-            <div class="mt-16 grid md:grid-cols-3 gap-8">
-                <div class="bg-white rounded-2xl p-8 text-center hover-lift">
-                    <div class="text-4xl font-bold text-navy mb-2">15+</div>
-                    <p class="text-gray-600">Languages Supported</p>
-                </div>
-                
-                <div class="bg-white rounded-2xl p-8 text-center hover-lift">
-                    <div class="text-4xl font-bold text-navy mb-2">< 2 sec</div>
-                    <p class="text-gray-600">Expert Response Time</p>
-                </div>
-                
-                <div class="bg-white rounded-2xl p-8 text-center hover-lift">
-                    <div class="text-4xl font-bold text-navy mb-2">150+</div>
-                    <p class="text-gray-600">AI Tools Per Expert</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Success Stories Section -->
-    <section id="testimonials" class="py-24 bg-white">
-        <div class="max-w-7xl mx-auto px-6">
-            <div class="text-center mb-16">
-                <h2 class="text-5xl font-bold text-navy mb-4">Success Stories</h2>
-                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
-                    Real experiences from people who found their dream properties through AIdea
+                    Real stories from people who found their perfect property with AIdea
                 </p>
             </div>
             
             <!-- Testimonials Grid -->
             <div class="grid md:grid-cols-3 gap-8">
-                <div class="bg-gray-50 rounded-2xl p-8 hover-lift">
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all">
                     <div class="flex items-center space-x-4 mb-6">
-                        <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center text-2xl font-bold text-white">
-                            SA
+                        <div class="w-16 h-16 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center text-2xl font-bold text-white">
+                            JT
                         </div>
                         <div>
-                            <h4 class="font-semibold text-lg">Sarah Ahmed</h4>
-                            <p class="text-gray-600">From London</p>
+                            <h4 class="font-semibold text-lg">James Thompson</h4>
+                            <p class="text-gray-600">From UK</p>
                         </div>
                     </div>
                     <p class="text-gray-700 mb-4">
-                        "I was skeptical about AI at first, but my consultant Sarah used it to find me the perfect investment property in Dubai Marina. The ROI analysis was spot-on, and I'm already seeing 7.2% rental yield!"
+                        "AIdea made my Dubai property investment seamless. From finding the perfect apartment to setting up my golden visa, they handled everything. The AI recommendations were spot-on!"
                     </p>
                     <div class="flex items-center space-x-1">
                         <span class="text-yellow-500">★★★★★</span>
-                        <span class="text-sm text-gray-500 ml-2">5.0</span>
                     </div>
                 </div>
                 
-                <div class="bg-gray-50 rounded-2xl p-8 hover-lift">
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all">
                     <div class="flex items-center space-x-4 mb-6">
-                        <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center text-2xl font-bold text-white">
-                            RK
+                        <div class="w-16 h-16 bg-gradient-to-br from-warm-orange to-secondary rounded-full flex items-center justify-center text-2xl font-bold text-white">
+                            SM
                         </div>
                         <div>
-                            <h4 class="font-semibold text-lg">Raj Kumar</h4>
-                            <p class="text-gray-600">From Mumbai</p>
+                            <h4 class="font-semibold text-lg">Sophie Martin</h4>
+                            <p class="text-gray-600">From France</p>
                         </div>
                     </div>
                     <p class="text-gray-700 mb-4">
-                        "Being able to chat with an expert in Hindi made everything so easy. My consultant understood exactly what I wanted and even helped me get a golden visa. Amazing service!"
+                        "Found my dream villa in Bali through AIdea. The team's local knowledge and the AI's analysis gave me confidence. Now earning 12% rental returns!"
                     </p>
                     <div class="flex items-center space-x-1">
                         <span class="text-yellow-500">★★★★★</span>
-                        <span class="text-sm text-gray-500 ml-2">5.0</span>
                     </div>
                 </div>
                 
-                <div class="bg-gray-50 rounded-2xl p-8 hover-lift">
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all">
                     <div class="flex items-center space-x-4 mb-6">
-                        <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center text-2xl font-bold text-white">
-                            MR
+                        <div class="w-16 h-16 bg-gradient-to-br from-accent to-primary rounded-full flex items-center justify-center text-2xl font-bold text-white">
+                            AA
                         </div>
                         <div>
-                            <h4 class="font-semibold text-lg">Maria Rodriguez</h4>
-                            <p class="text-gray-600">From Madrid</p>
+                            <h4 class="font-semibold text-lg">Ahmed Al-Rashid</h4>
+                            <p class="text-gray-600">From Saudi Arabia</p>
                         </div>
                     </div>
                     <p class="text-gray-700 mb-4">
-                        "24/7 availability was a game-changer. I could chat with my property expert at my convenience, and they remembered all my preferences. Found my dream villa in just 3 days!"
+                        "The personalized service in Arabic and complete A-Z support made all the difference. They even helped with school selection for my children. Truly a global consultancy!"
                     </p>
                     <div class="flex items-center space-x-1">
                         <span class="text-yellow-500">★★★★★</span>
-                        <span class="text-sm text-gray-500 ml-2">5.0</span>
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Why Dubai Section -->
-    <section class="py-24 bg-gray-50">
-        <div class="max-w-7xl mx-auto px-6">
-            <div class="text-center mb-16">
-                <h2 class="text-5xl font-bold text-navy mb-4">Why Dubai Real Estate?</h2>
-                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
-                    The world's fastest-growing property market offers unmatched opportunities
-                </p>
-            </div>
-            
-            <div class="grid md:grid-cols-2 gap-12 items-center">
-                <div class="space-y-6">
-                    <div class="flex items-start space-x-4">
-                        <div class="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <span class="text-xl">🌟</span>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-semibold text-navy mb-2">Strategic Location</h3>
-                            <p class="text-gray-600">4-hour flight to 1/3 of world's population, perfect for global investors</p>
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-start space-x-4">
-                        <div class="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <span class="text-xl">💸</span>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-semibold text-navy mb-2">Tax-Free Income</h3>
-                            <p class="text-gray-600">No income tax on rental yields or capital gains, maximizing your returns</p>
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-start space-x-4">
-                        <div class="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <span class="text-xl">📈</span>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-semibold text-navy mb-2">High ROI Potential</h3>
-                            <p class="text-gray-600">Average rental yields of 5-8%, among the highest globally</p>
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-start space-x-4">
-                        <div class="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <span class="text-xl">🏆</span>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-semibold text-navy mb-2">Golden Visa Program</h3>
-                            <p class="text-gray-600">Property investment of AED 2M+ qualifies for 10-year residency</p>
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-start space-x-4">
-                        <div class="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <span class="text-xl">🌍</span>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-semibold text-navy mb-2">100% Foreign Ownership</h3>
-                            <p class="text-gray-600">Full freehold ownership rights in designated areas for all nationalities</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="bg-white rounded-3xl shadow-xl p-8">
-                    <h3 class="text-2xl font-semibold text-navy mb-6">Dubai Market Snapshot</h3>
-                    
-                    <div class="space-y-4">
-                        <div class="flex justify-between items-center pb-4 border-b">
-                            <span class="text-gray-600">Average Property Price Growth</span>
-                            <span class="text-2xl font-bold text-primary">+8.5%</span>
-                        </div>
-                        
-                        <div class="flex justify-between items-center pb-4 border-b">
-                            <span class="text-gray-600">Transaction Volume (2024)</span>
-                            <span class="text-2xl font-bold text-primary">+12%</span>
-                        </div>
-                        
-                        <div class="flex justify-between items-center pb-4 border-b">
-                            <span class="text-gray-600">Foreign Ownership</span>
-                            <span class="text-2xl font-bold text-primary">100%</span>
-                        </div>
-                        
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-600">Payment Plans Available</span>
-                            <span class="text-2xl font-bold text-primary">60/40</span>
-                        </div>
-                    </div>
-                    
-                    <div class="mt-8 p-4 bg-light-blue rounded-xl">
-                        <p class="text-sm text-navy font-medium">
-                            Dubai real estate offers the perfect combination of high returns, lifestyle benefits, and investment security.
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Trust & Security Section -->
-    <section class="py-24 bg-white">
-        <div class="max-w-7xl mx-auto px-6">
-            <div class="text-center mb-16">
-                <h2 class="text-5xl font-bold text-navy mb-4">Your Trust, Our Priority</h2>
-                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
-                    Bank-level security and complete transparency in every interaction
-                </p>
-            </div>
-            
-            <div class="grid md:grid-cols-4 gap-8">
-                <div class="text-center">
-                    <div class="w-20 h-20 bg-light-blue rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg class="w-10 h-10 text-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-semibold text-navy mb-2">End-to-End Encryption</h3>
-                    <p class="text-gray-600">All conversations are encrypted using bank-level security protocols</p>
-                </div>
-                
-                <div class="text-center">
-                    <div class="w-20 h-20 bg-light-blue rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg class="w-10 h-10 text-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-semibold text-navy mb-2">RERA Registered</h3>
-                    <p class="text-gray-600">Fully licensed and regulated by Dubai's Real Estate Regulatory Agency</p>
-                </div>
-                
-                <div class="text-center">
-                    <div class="w-20 h-20 bg-light-blue rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg class="w-10 h-10 text-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-semibold text-navy mb-2">Secure Transactions</h3>
-                    <p class="text-gray-600">All property transactions through escrow accounts for complete safety</p>
-                </div>
-                
-                <div class="text-center">
-                    <div class="w-20 h-20 bg-light-blue rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg class="w-10 h-10 text-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path>
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-semibold text-navy mb-2">No Hidden Fees</h3>
-                    <p class="text-gray-600">Complete transparency with all costs clearly communicated upfront</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- FAQ Section -->
-    <section class="py-24 bg-gray-50">
-        <div class="max-w-4xl mx-auto px-6">
-            <div class="text-center mb-16">
-                <h2 class="text-5xl font-bold text-navy mb-4">Frequently Asked Questions</h2>
-                <p class="text-xl text-gray-600">
-                    Everything you need to know about AIdea
-                </p>
-            </div>
-            
-            <div class="space-y-6">
-                <details class="bg-white rounded-2xl p-6 cursor-pointer">
-                    <summary class="text-lg font-semibold text-navy flex justify-between items-center">
-                        How do your AI-enhanced consultants work?
-                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                        </svg>
-                    </summary>
-                    <p class="mt-4 text-gray-600">
-                        Our property consultants are real experts who use advanced AI tools to serve you better. They have instant access to market data, can analyze thousands of properties in seconds, predict trends with 98.7% accuracy, and understand your needs in any language. Think of it as having a super-intelligent assistant helping your expert find exactly what you need.
-                    </p>
-                </details>
-                
-                <details class="bg-white rounded-2xl p-6 cursor-pointer">
-                    <summary class="text-lg font-semibold text-navy flex justify-between items-center">
-                        Is there any cost to use AIdea?
-                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                        </svg>
-                    </summary>
-                    <p class="mt-4 text-gray-600">
-                        No! AIdea is completely free to use. Our consultants earn commission from developers and sellers when you successfully purchase a property. There are no hidden fees, subscription costs, or charges for using our service.
-                    </p>
-                </details>
-                
-                <details class="bg-white rounded-2xl p-6 cursor-pointer">
-                    <summary class="text-lg font-semibold text-navy flex justify-between items-center">
-                        Can I really communicate in my native language?
-                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                        </svg>
-                    </summary>
-                    <p class="mt-4 text-gray-600">
-                        Absolutely! AIdea's consultants speak 15+ languages fluently including Arabic, Hindi, Russian, Chinese, Tagalog, French, and more. You can type or send voice notes in your preferred language, and your consultant will understand and respond naturally in the same language.
-                    </p>
-                </details>
-                
-                <details class="bg-white rounded-2xl p-6 cursor-pointer">
-                    <summary class="text-lg font-semibold text-navy flex justify-between items-center">
-                        How accurate are the property recommendations?
-                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                        </svg>
-                    </summary>
-                    <p class="mt-4 text-gray-600">
-                        Our consultants achieve 98.7% accuracy in matching properties to client requirements using AI technology. The system continuously learns from successful matches and client feedback, improving recommendations over time. Your consultant considers not just your stated preferences but also understands context and unstated needs.
-                    </p>
-                </details>
-                
-                <details class="bg-white rounded-2xl p-6 cursor-pointer">
-                    <summary class="text-lg font-semibold text-navy flex justify-between items-center">
-                        Can your consultants help with investment analysis?
-                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                        </svg>
-                    </summary>
-                    <p class="mt-4 text-gray-600">
-                        Yes! Our consultants use AI tools to provide comprehensive investment analysis including rental yield predictions, capital appreciation forecasts, ROI calculations, and market timing insights. They also check your eligibility for UAE residency visas based on your investment amount.
-                    </p>
-                </details>
-            </div>
-        </div>
-    </section>
-
-    <!-- Final CTA Section -->
-    <section class="py-24 bg-navy text-white relative overflow-hidden">
-        <!-- Background decoration -->
-        <div class="absolute inset-0 opacity-10">
-            <div class="absolute top-0 right-0 w-96 h-96 bg-primary rounded-full filter blur-3xl animate-pulse"></div>
-            <div class="absolute bottom-0 left-0 w-96 h-96 bg-white rounded-full filter blur-3xl animate-pulse" style="animation-delay: 2s"></div>
-        </div>
-        
+    <!-- CTA Section -->
+    <section class="py-24 gradient-bg text-white relative overflow-hidden">
         <div class="relative z-10 max-w-4xl mx-auto px-6 text-center">
-            <h2 class="text-5xl lg:text-6xl font-bold mb-6">Ready to Meet Your AI-Enhanced Expert?</h2>
-            <p class="text-xl mb-4 text-white/80">
-                Join thousands who've found their perfect property with the help of our AI-powered consultants
-            </p>
-            <p class="text-2xl font-semibold mb-10">
-                Your dedicated property expert is just one message away
+            <h2 class="text-5xl lg:text-6xl font-bold mb-6">Ready to Start Your Journey?</h2>
+            <p class="text-xl mb-10 text-white/90">
+                Whether you're looking for your dream home or your next investment opportunity, 
+                we're here to make it happen — with AI intelligence and human warmth.
             </p>
             
-            <!-- Benefits reminder -->
-            <div class="flex flex-wrap justify-center gap-4 mb-12">
-                <div class="flex items-center space-x-2 bg-white/10 px-4 py-2 rounded-full">
-                    <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                    <span>100% Free</span>
-                </div>
-                <div class="flex items-center space-x-2 bg-white/10 px-4 py-2 rounded-full">
-                    <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                    <span>Instant Response</span>
-                </div>
-                <div class="flex items-center space-x-2 bg-white/10 px-4 py-2 rounded-full">
-                    <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                    <span>15+ Languages</span>
-                </div>
-            </div>
-            
-            <button class="bg-white text-navy px-10 py-5 rounded-full text-lg font-medium hover:bg-gray-100 transition-all hover-lift inline-flex items-center space-x-3 whatsapp-btn glow">
+            <button class="bg-white text-navy px-10 py-5 rounded-full text-lg font-medium hover:bg-gray-100 transition-all inline-flex items-center space-x-3 whatsapp-btn">
                 <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
                 </svg>
-                <span>Connect with Your Expert Now</span>
+                <span>Let's Talk About Your Future</span>
             </button>
             
-            <p class="mt-8 text-sm text-white/60">
-                No downloads, no sign-ups. Just open WhatsApp and chat with your expert.
+            <p class="mt-8 text-sm text-white/70">
+                Available 24/7 in 15+ languages • No fees • Expert guidance
             </p>
         </div>
     </section>
@@ -1231,84 +792,493 @@
     <footer class="py-16 bg-dark-navy text-white">
         <div class="max-w-7xl mx-auto px-6">
             <div class="grid md:grid-cols-4 gap-8 mb-12">
-                <!-- Logo and Description -->
                 <div class="md:col-span-2">
-                    <div class="flex items-baseline space-x-1 mb-4">
-                        <span class="text-3xl font-bold text-white">AI</span>
-                        <span class="text-3xl font-bold text-primary">dea</span>
-                    </div>
+                    <div class="text-3xl font-bold gradient-text mb-4">AIDEA</div>
                     <p class="text-white/70 mb-4">
-                        Dubai's AI-Enhanced Property Consultants - Where human expertise meets artificial intelligence.
+                        Your AI-Powered Global Real Estate Consultancy
                     </p>
                     <p class="text-white/60 text-sm">
-                        Powered by advanced AI technology, our consultants are revolutionizing how people find, analyze, and purchase properties in Dubai.
+                        Arranging everything from A to Z for your perfect home or investment across the globe.
                     </p>
                 </div>
                 
-                <!-- Quick Links -->
                 <div>
-                    <h4 class="font-semibold mb-4">Quick Links</h4>
+                    <h4 class="font-semibold mb-4">Our Locations</h4>
                     <ul class="space-y-2 text-white/70">
-                        <li><a href="#how-it-works" class="hover:text-primary transition-colors">How It Works</a></li>
-                        <li><a href="#technology" class="hover:text-primary transition-colors">Technology</a></li>
-                        <li><a href="#features" class="hover:text-primary transition-colors">Features</a></li>
-                        <li><a href="#testimonials" class="hover:text-primary transition-colors">Success Stories</a></li>
+                        <li>🇦🇪 Dubai, UAE</li>
+                        <li>🇮🇩 Bali, Indonesia</li>
+                        <li class="text-warm-orange">🇲🇦 Morocco (Coming Soon)</li>
+                        <li class="text-warm-orange">🇨🇾 Cyprus (Coming Soon)</li>
                     </ul>
                 </div>
                 
-                <!-- Contact -->
                 <div>
-                    <h4 class="font-semibold mb-4">Get in Touch</h4>
+                    <h4 class="font-semibold mb-4">Contact</h4>
                     <ul class="space-y-2 text-white/70">
-                        <li class="flex items-center space-x-2">
-                            <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                            </svg>
-                            <span>hello@aidea.ae</span>
-                        </li>
-                        <li class="flex items-center space-x-2">
-                            <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                            </svg>
-                            <span>Dubai, UAE</span>
-                        </li>
-                        <li class="flex items-center space-x-2">
-                            <svg class="w-5 h-5 text-primary" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-                            </svg>
-                            <span>WhatsApp Available 24/7</span>
-                        </li>
+                        <li>hello@aidea.global</li>
+                        <li>WhatsApp: 24/7</li>
+                        <li>15+ Languages</li>
                     </ul>
                 </div>
             </div>
             
-            <div class="border-t border-white/20 pt-8 flex flex-col md:flex-row justify-between items-center">
-                <p class="text-white/60 text-sm mb-4 md:mb-0">
-                    © 2024 AIdea Real Estate. All rights reserved. RERA License: 123456
+            <div class="border-t border-white/20 pt-8 text-center">
+                <p class="text-white/60 text-sm">
+                    © 2024 AIdea Global Real Estate. All rights reserved.
                 </p>
-                <div class="flex items-center space-x-6">
-                    <a href="#" class="text-white/60 hover:text-primary transition-colors">Privacy Policy</a>
-                    <a href="#" class="text-white/60 hover:text-primary transition-colors">Terms of Service</a>
-                </div>
             </div>
         </div>
     </footer>
 
     <!-- Floating WhatsApp Button -->
     <div class="fixed bottom-8 right-8 z-50">
-        <button class="bg-green-500 text-white w-16 h-16 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 flex items-center justify-center group whatsapp-btn">
+        <button class="warm-button text-white w-16 h-16 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 flex items-center justify-center group whatsapp-btn">
             <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
             </svg>
-            <span class="absolute -top-12 right-0 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                Chat with expert now!
-            </span>
         </button>
     </div>
 
     <script>
-        // Smooth scrolling for navigation links
+        // Country data with real coordinates
+        const countriesData = [
+            {
+                code: 'AE',
+                name: 'United Arab Emirates',
+                cities: 'Dubai • Abu Dhabi • Sharjah',
+                lat: 24.466667,
+                lon: 54.366667,
+                status: 'active',
+                emoji: '🇦🇪',
+                description: 'Tax-free income, golden visa opportunities, world-class infrastructure',
+                section: 'uae'
+            },
+            {
+                code: 'ID',
+                name: 'Bali, Indonesia',
+                cities: 'Seminyak • Canggu • Ubud',
+                lat: -8.3405,
+                lon: 115.0920,
+                status: 'active',
+                emoji: '🇮🇩',
+                description: 'Tropical paradise, high rental yields, growing expat community',
+                section: 'bali'
+            },
+            {
+                code: 'MA',
+                name: 'Morocco',
+                cities: 'Casablanca • Marrakech',
+                lat: 31.791702,
+                lon: -7.09262,
+                status: 'coming-soon',
+                emoji: '🇲🇦',
+                description: 'Emerging market with exciting opportunities'
+            },
+            {
+                code: 'CY',
+                name: 'Cyprus',
+                cities: 'Limassol • Paphos',
+                lat: 35.126413,
+                lon: 33.429859,
+                status: 'coming-soon',
+                emoji: '🇨🇾',
+                description: 'EU residency benefits, growing tech hub'
+            },
+            {
+                code: 'TR',
+                name: 'Turkey',
+                cities: 'Istanbul • Antalya',
+                lat: 38.963745,
+                lon: 35.243322,
+                status: 'coming-soon',
+                emoji: '🇹🇷',
+                description: 'Strategic location, citizenship program'
+            }
+        ];
+
+        // Initialize Leaflet map with MapTiler
+        function initializeMap() {
+            // Initialize the map
+            const map = L.map('worldMap', {
+                center: [25, 45],
+                zoom: 3,
+                minZoom: 2,
+                maxZoom: 18
+            });
+
+            // Add MapTiler Bright style
+            L.tileLayer('https://api.maptiler.com/maps/bright-v2/{z}/{x}/{y}.png?key=QV7JaXg4IGKo3ISTBbpo', {
+                tileSize: 512,
+                zoomOffset: -1,
+                minZoom: 1,
+                attribution: '<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a>',
+                crossOrigin: true
+            }).addTo(map);
+
+            // Country data with markers
+            const locations = [
+                {
+                    name: 'United Arab Emirates',
+                    code: 'UAE',
+                    lat: 25.276987,
+                    lng: 55.296249,
+                    cities: 'Dubai • Abu Dhabi • Sharjah',
+                    status: 'active'
+                },
+                {
+                    name: 'Bali, Indonesia',
+                    code: 'BALI',
+                    lat: -8.3405,
+                    lng: 115.0920,
+                    cities: 'Seminyak • Canggu • Ubud',
+                    status: 'active'
+                },
+                {
+                    name: 'Morocco',
+                    code: 'MA',
+                    lat: 31.791702,
+                    lng: -7.09262,
+                    cities: 'Casablanca • Marrakech',
+                    status: 'coming-soon'
+                },
+                {
+                    name: 'Cyprus',
+                    code: 'CY',
+                    lat: 35.126413,
+                    lng: 33.429859,
+                    cities: 'Limassol • Paphos',
+                    status: 'coming-soon'
+                },
+                {
+                    name: 'Turkey',
+                    code: 'TR',
+                    lat: 38.963745,
+                    lng: 35.243322,
+                    cities: 'Istanbul • Antalya',
+                    status: 'coming-soon'
+                }
+            ];
+
+            // Add markers
+            locations.forEach(location => {
+                const markerHtml = `
+                    <div class="marker-pin ${location.status}">
+                        <span>${location.code}</span>
+                    </div>
+                `;
+
+                const icon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: markerHtml,
+                    iconSize: [50, 50],
+                    iconAnchor: [25, 25]
+                });
+
+                const marker = L.marker([location.lat, location.lng], { icon })
+                    .addTo(map);
+
+                // Create popup
+                const popupContent = `
+                    <div style="text-align: center; min-width: 200px;">
+                        <h3 style="margin: 0 0 10px 0; color: #1e3a5f;">${location.name}</h3>
+                        <p style="margin: 0 0 15px 0; color: #666;">${location.cities}</p>
+                        ${location.status === 'active' 
+                            ? '<button class="warm-button text-white px-4 py-2 rounded-full text-sm">Explore Properties</button>'
+                            : '<span style="color: #FFA07A; font-weight: 600;">Coming Soon</span>'
+                        }
+                    </div>
+                `;
+
+                marker.bindPopup(popupContent);
+
+                // Click handler
+                marker.on('click', function() {
+                    if (location.status === 'active') {
+                        if (location.code === 'UAE') {
+                            scrollToSection('uae');
+                        } else if (location.code === 'BALI') {
+                            scrollToSection('bali');
+                        }
+                    } else {
+                        showComingSoonModal({ name: location.name });
+                    }
+                });
+            });
+
+            // Add connection line between active markets
+            const activeLocations = locations.filter(loc => loc.status === 'active');
+            if (activeLocations.length > 1) {
+                const latlngs = activeLocations.map(loc => [loc.lat, loc.lng]);
+                L.polyline(latlngs, {
+                    color: '#87CEEB',
+                    weight: 3,
+                    opacity: 0.6,
+                    dashArray: '10, 10',
+                    className: 'animate-pulse'
+                }).addTo(map);
+            }
+        }
+        
+        // Helper functions for tooltips
+        function showTooltip(event, countryName, cities) {
+            const tooltip = document.getElementById('mapTooltip');
+            if (!tooltip) return;
+            
+            tooltip.innerHTML = `
+                <div class="font-semibold">${countryName}</div>
+                <div class="text-sm text-gray-600">${cities}</div>
+            `;
+            tooltip.classList.add('visible');
+            
+            const mapContainer = document.getElementById('worldMap');
+            const rect = mapContainer.getBoundingClientRect();
+            const markerRect = event.currentTarget.getBoundingClientRect();
+            
+            tooltip.style.left = (markerRect.left - rect.left + markerRect.width/2) + 'px';
+            tooltip.style.top = (markerRect.top - rect.top - 10) + 'px';
+        }
+        
+        function hideTooltip() {
+            const tooltip = document.getElementById('mapTooltip');
+            if (tooltip) {
+                tooltip.classList.remove('visible');
+            }
+        }
+        
+        // Handle country clicks
+        function handleCountryClick(country) {
+            const countryData = {
+                'uae': { name: 'United Arab Emirates', status: 'active', section: 'uae' },
+                'bali': { name: 'Bali, Indonesia', status: 'active', section: 'bali' },
+                'morocco': { name: 'Morocco', status: 'coming-soon' },
+                'cyprus': { name: 'Cyprus', status: 'coming-soon' },
+                'turkey': { name: 'Turkey', status: 'coming-soon' }
+            };
+            
+            const data = countryData[country];
+            
+            if (data.status === 'active') {
+                scrollToSection(data.section);
+            } else {
+                showComingSoonModal(data);
+            }
+        }
+
+        // Generate country cards
+        function generateCountryCards() {
+            const countryCardsContainer = document.getElementById('countryCards');
+            
+            countriesData.forEach((country) => {
+                const card = document.createElement('div');
+                card.className = `bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all cursor-pointer ${country.status === 'coming-soon' ? 'opacity-75' : ''}`;
+                
+                card.innerHTML = `
+                    <div class="w-16 h-16 bg-gradient-to-br ${country.status === 'active' ? 'from-primary to-secondary' : 'from-secondary to-warm-orange'} rounded-xl flex items-center justify-center mb-4">
+                        <span class="text-2xl">${country.emoji}</span>
+                    </div>
+                    <h3 class="text-xl font-semibold text-navy mb-2">${country.name}</h3>
+                    <p class="text-gray-600 mb-4">${country.cities}</p>
+                    <p class="text-sm text-gray-500 mb-4">${country.description}</p>
+                    <span class="${country.status === 'active' ? 'text-green-500' : 'text-warm-orange'} font-medium">● ${country.status === 'active' ? 'Active' : 'Coming Soon'}</span>
+                `;
+                
+                card.addEventListener('click', () => {
+                    if (country.status === 'active') {
+                        scrollToSection(country.section);
+                    } else {
+                        showComingSoonModal(country);
+                    }
+                });
+                
+                countryCardsContainer.appendChild(card);
+            });
+        }
+
+        // Initialize everything when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize the map
+            initializeMap();
+            generateCountryCards();
+            
+            // Initialize Dubai area clicks
+            document.querySelectorAll('.dubai-area').forEach(area => {
+                area.addEventListener('click', function() {
+                    const areaName = this.dataset.area;
+                    showAreaDetails(areaName);
+                });
+            });
+        });
+
+        function scrollToSection(section) {
+            if (section === 'uae') {
+                document.getElementById('uae-section').style.display = 'block';
+                document.getElementById('uae-section').scrollIntoView({ behavior: 'smooth' });
+            } else if (section === 'bali') {
+                showNotification('Bali section coming soon! Contact us via WhatsApp for Bali properties.');
+            }
+        }
+
+        function showComingSoonModal(country) {
+            const modal = document.getElementById('comingSoonModal');
+            const modalContent = document.getElementById('modalContent');
+            const modalCountry = document.getElementById('modalCountry');
+            const modalCountryName = document.getElementById('modalCountryName');
+            
+            modalCountry.textContent = country.name;
+            modalCountryName.textContent = country.name;
+            
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modalContent.style.transform = 'scale(1)';
+                modalContent.style.opacity = '1';
+            }, 10);
+        }
+
+        function closeComingSoonModal() {
+            const modal = document.getElementById('comingSoonModal');
+            const modalContent = document.getElementById('modalContent');
+            
+            modalContent.style.transform = 'scale(0.95)';
+            modalContent.style.opacity = '0';
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-20 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-primary to-secondary text-white px-8 py-4 rounded-full shadow-xl z-50 animate-slide-up';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translate(-50%, -20px)';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // Dubai area details function
+        function showAreaDetails(areaName) {
+            const detailsContainer = document.getElementById('areaDetails');
+            const areaData = {
+                'Dubai Marina': {
+                    description: 'Premier waterfront community with luxury high-rises and vibrant nightlife',
+                    avgPrice: 'AED 1,800 - 3,500 per sq.ft',
+                    roi: '6-8% rental yield',
+                    highlights: ['Marina Walk', 'Beach access', 'Metro connected', 'Restaurant hub']
+                },
+                'Downtown Dubai': {
+                    description: 'The heart of Dubai with iconic Burj Khalifa and Dubai Mall',
+                    avgPrice: 'AED 2,500 - 5,000 per sq.ft',
+                    roi: '5-7% rental yield',
+                    highlights: ['Burj Khalifa views', 'Dubai Mall', 'Business hub', 'Dubai Fountain']
+                },
+                'Palm Jumeirah': {
+                    description: 'Exclusive island living with private beaches and luxury villas',
+                    avgPrice: 'AED 2,000 - 8,000 per sq.ft',
+                    roi: '5-6% rental yield',
+                    highlights: ['Private beaches', 'Luxury resorts', 'Monorail access', 'Atlantis']
+                },
+                'Business Bay': {
+                    description: 'Dubai\'s central business district with modern skyscrapers and canal views',
+                    avgPrice: 'AED 1,500 - 3,000 per sq.ft',
+                    roi: '7-9% rental yield',
+                    highlights: ['Business hub', 'Canal views', 'Metro access', 'Dining options']
+                },
+                'JBR': {
+                    description: 'Jumeirah Beach Residence - beachfront living with The Walk',
+                    avgPrice: 'AED 1,700 - 3,200 per sq.ft',
+                    roi: '6-8% rental yield',
+                    highlights: ['Beach access', 'The Walk', 'Marina views', 'Family-friendly']
+                },
+                'DIFC': {
+                    description: 'Dubai International Financial Centre - the region\'s financial hub',
+                    avgPrice: 'AED 2,000 - 4,500 per sq.ft',
+                    roi: '5-7% rental yield',
+                    highlights: ['Financial district', 'Art galleries', 'Fine dining', 'Metro connected']
+                },
+                'Jumeirah': {
+                    description: 'Upscale residential area with villas and beach proximity',
+                    avgPrice: 'AED 1,500 - 5,000 per sq.ft',
+                    roi: '4-6% rental yield',
+                    highlights: ['Beach proximity', 'Villa communities', 'Schools', 'Quiet neighborhoods']
+                },
+                'Dubai Hills': {
+                    description: 'Master-planned community with golf course and parks',
+                    avgPrice: 'AED 1,300 - 2,500 per sq.ft',
+                    roi: '6-8% rental yield',
+                    highlights: ['Golf course', 'Dubai Hills Mall', 'Parks', 'Family communities']
+                },
+                'Arabian Ranches': {
+                    description: 'Desert-themed villa community with golf courses',
+                    avgPrice: 'AED 800 - 1,500 per sq.ft',
+                    roi: '5-7% rental yield',
+                    highlights: ['Villa living', 'Golf courses', 'Community feel', 'Schools']
+                },
+                'Creek Harbour': {
+                    description: 'Waterfront mega-development with Dubai Creek Tower',
+                    avgPrice: 'AED 1,200 - 2,200 per sq.ft',
+                    roi: '7-9% rental yield',
+                    highlights: ['Waterfront', 'Future Dubai Creek Tower', 'Wildlife sanctuary', 'Marina']
+                }
+            };
+            
+            const data = areaData[areaName] || {
+                description: 'One of Dubai\'s premier residential and commercial areas',
+                avgPrice: 'Contact us for current prices',
+                roi: 'Attractive rental yields',
+                highlights: ['Great location', 'Modern amenities', 'Growing area', 'Investment potential']
+            };
+            
+            detailsContainer.innerHTML = `
+                <h3 class="text-2xl font-semibold text-navy mb-6">${areaName}</h3>
+                <p class="text-gray-600 mb-6">${data.description}</p>
+                
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="bg-white rounded-xl p-4 shadow-sm">
+                        <p class="text-sm text-gray-500 mb-1">Average Price</p>
+                        <p class="font-semibold text-navy">${data.avgPrice}</p>
+                    </div>
+                    <div class="bg-white rounded-xl p-4 shadow-sm">
+                        <p class="text-sm text-gray-500 mb-1">Investment Returns</p>
+                        <p class="font-semibold text-accent">${data.roi}</p>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-xl p-6 shadow-sm">
+                    <h4 class="text-lg font-semibold text-navy mb-3">Area Highlights</h4>
+                    <ul class="space-y-2 text-gray-600">
+                        ${data.highlights.map(h => `
+                            <li class="flex items-start space-x-2">
+                                <span class="text-accent">✓</span>
+                                <span>${h}</span>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+                
+                <button class="warm-button text-white px-6 py-3 rounded-full text-sm font-medium mt-6 w-full whatsapp-btn">
+                    Explore ${areaName} Properties
+                </button>
+            `;
+            
+            // Re-attach WhatsApp handler to the new button
+            detailsContainer.querySelector('.whatsapp-btn').addEventListener('click', function(e) {
+                e.preventDefault();
+                window.open('https://wa.me/971501234567?text=Hi%20AIdea!%20I%27m%20interested%20in%20exploring%20' + encodeURIComponent(areaName) + '%20properties', '_blank');
+            });
+        }
+
+        // WhatsApp button functionality
+        function attachWhatsAppHandlers() {
+            document.querySelectorAll('.whatsapp-btn').forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    window.open('https://wa.me/971501234567?text=Hi%20AIdea!%20I%27m%20interested%20in%20exploring%20real%20estate%20opportunities', '_blank');
+                });
+            });
+        }
+
+        // Smooth scrolling
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
                 e.preventDefault();
@@ -1322,50 +1292,14 @@
             });
         });
 
-        // Handle WhatsApp button clicks
-        const whatsappButtons = document.querySelectorAll('.whatsapp-btn');
-        whatsappButtons.forEach(function(button) {
-            button.addEventListener('click', function(e) {
-                e.preventDefault();
-                // Replace with actual WhatsApp number
-                window.open('https://wa.me/971501234567?text=Hi%20AIdea!%20I%27m%20interested%20in%20Dubai%20properties', '_blank');
-            });
-        });
+        // Initialize WhatsApp handlers
+        attachWhatsAppHandlers();
 
-        // Intersection Observer for animations
-        const observerOptions = {
-            threshold: 0.1,
-            rootMargin: '0px 0px -100px 0px'
-        };
-
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('animate-fade-in');
-                }
-            });
-        }, observerOptions);
-
-        // Observe all feature cards and sections
-        document.querySelectorAll('.feature-card, section').forEach(el => {
-            observer.observe(el);
-        });
-
-        // Counter animation
-        const counters = document.querySelectorAll('.counter');
-        const counterObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const counter = entry.target;
-                    const target = counter.innerText;
-                    counter.style.opacity = '1';
-                    counter.style.transform = 'translateY(0)';
-                }
-            });
-        }, observerOptions);
-
-        counters.forEach(counter => {
-            counterObserver.observe(counter);
+        // Handle form submission for coming soon modal
+        document.querySelector('#comingSoonModal form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            showNotification('Thank you! We\'ll notify you when we launch in this location.');
+            closeComingSoonModal();
         });
     </script>
 </body>
